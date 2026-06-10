@@ -1,0 +1,10 @@
+{
+  "name": "freemodel-token-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local dashboard to monitor freemodel.dev account credit limits",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

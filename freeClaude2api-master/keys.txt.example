@@ -1,0 +1,10 @@
+# FreeModel API keys — one per line.
+# Copy this file to keys.txt and paste your real keys below.
+# Lines that are empty are ignored. Keys can also be added later
+# from the dashboard (http://localhost:8742) instead of this file.
+#
+# Where to get keys: register at https://freemodel.dev (a throwaway
+# inbox from https://temp-mail.org works) and copy your API key.
+
+fe_oa_your_first_key_here
+fe_oa_your_second_key_here

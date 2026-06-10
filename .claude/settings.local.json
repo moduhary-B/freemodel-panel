@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:freemodel.dev)",
+      "WebSearch",
+      "Read(//Users/dev/**)",
+      "Bash(cd /d E:\\\\work\\\\freemodel-abuse)",
+      "Bash(node -e \"require\\('./server.js'\\)\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/accounts -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"test@x.com\\\\\",\\\\\"apiKey\\\\\":\\\\\"sk-test123456789abcd\\\\\",\\\\\"cookie\\\\\":\\\\\"_ga=GA1.1.1177517425.1780904366; bm_session=8e027516f32619ffe76950d2b35d971e0c95c50076bceb19bc462db22b6bacb7\\\\\"}\")",
+      "Bash(curl -s http://localhost:3000/api/accounts)",
+      "Bash(curl -s -X DELETE http://localhost:3000/api/accounts/4afc5d97-08c0-4e82-a316-6c447bf255dc)",
+      "Bash(cd /d \"E:\\\\work\\\\freemodel-abuse\")",
+      "Bash(node -e \"const s=require\\('./server.js'\\)\")",
+      "Bash(node --input-type=module -e \"process.exit\\(0\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node server.js)",
+      "Bash(curl -s -X POST http://localhost:3000/api/accounts -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"curltest@x.com\\\\\",\\\\\"note\\\\\":\\\\\"вставлен весь curl\\\\\",\\\\\"cookie\\\\\":\\\\\"curl 'https://freemodel.dev/api/usage' --compressed -H 'User-Agent: Mozilla/5.0' -H 'Cookie: _ga=GA1.1.1177517425.1780904366; bm_session=8e027516f32619ffe76950d2b35d971e0c95c50076bceb19bc462db22b6bacb7' -H 'Pragma: no-cache'\\\\\"}\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 21160)",
+      "Bash(node *)",
+      "Bash(curl -s -X POST http://localhost:3000/api/accounts -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"curltest@x.com\\\\\",\\\\\"note\\\\\":\\\\\"весь curl\\\\\",\\\\\"cookie\\\\\":\\\\\"curl 'https://freemodel.dev/api/usage' --compressed -H 'User-Agent: Mozilla/5.0' -H 'Cookie: _ga=GA1.1.1177517425.1780904366; bm_session=8e027516f32619ffe76950d2b35d971e0c95c50076bceb19bc462db22b6bacb7' -H 'Pragma: no-cache'\\\\\"}\")"
+    ]
+  }
+}

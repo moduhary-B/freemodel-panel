@@ -1,0 +1,101 @@
+https://freemodel.dev/api/usage
+
+
+
+
+
+
+curl 'https://freemodel.dev/api/usage' \
+  --compressed \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0' \
+  -H 'Accept: */*' \
+  -H 'Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7' \
+  -H 'Accept-Encoding: gzip, deflate, br, zstd' \
+  -H 'Referer: https://freemodel.dev/dashboard/usage' \
+  -H 'Sec-GPC: 1' \
+  -H 'Connection: keep-alive' \
+  -H 'Cookie: _ga_7GS7PK7ED8=GS2.1.s1780932409$o4$g1$t1780932492$j46$l0$h0; _ga=GA1.1.1177517425.1780904366; bm_session=8e027516f32619ffe76950d2b35d971e0c95c50076bceb19bc462db22b6bacb7' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'Priority: u=4' \
+  -H 'Pragma: no-cache' \
+  -H 'Cache-Control: no-cache' \
+  -H 'TE: trailers'
+
+
+
+
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.Cookies.Add((New-Object System.Net.Cookie("_ga_7GS7PK7ED8", "GS2.1.s1780932409`$o4`$g1`$t1780932492`$j46`$l0`$h0", "/", "freemodel.dev")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_ga", "GA1.1.1177517425.1780904366", "/", "freemodel.dev")))
+$session.Cookies.Add((New-Object System.Net.Cookie("bm_session", "8e027516f32619ffe76950d2b35d971e0c95c50076bceb19bc462db22b6bacb7", "/", "freemodel.dev")))
+Invoke-WebRequest -UseBasicParsing -Uri "https://freemodel.dev/api/usage" `
+-WebSession $session `
+-UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0" `
+-Headers @{
+"Accept" = "*/*"
+  "Accept-Language" = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+  "Accept-Encoding" = "gzip, deflate, br, zstd"
+  "Referer" = "https://freemodel.dev/dashboard/usage"
+  "Sec-GPC" = "1"
+  "Sec-Fetch-Dest" = "empty"
+  "Sec-Fetch-Mode" = "cors"
+  "Sec-Fetch-Site" = "same-origin"
+  "Priority" = "u=4"
+  "Pragma" = "no-cache"
+  "Cache-Control" = "no-cache"
+  "TE" = "trailers"
+}
+
+
+
+
+
+
+
+
+GET /api/usage HTTP/2
+Host: freemodel.dev
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0
+Accept: */*
+Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7
+Accept-Encoding: gzip, deflate, br, zstd
+Referer: https://freemodel.dev/dashboard/usage
+Sec-GPC: 1
+Connection: keep-alive
+Cookie: _ga_7GS7PK7ED8=GS2.1.s1780932409$o4$g1$t1780932492$j46$l0$h0; _ga=GA1.1.1177517425.1780904366; bm_session=8e027516f32619ffe76950d2b35d971e0c95c50076bceb19bc462db22b6bacb7
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-origin
+Priority: u=4
+Pragma: no-cache
+Cache-Control: no-cache
+TE: trailers
+
+
+
+
+
+HTTP/2 200 
+date: Mon, 08 Jun 2026 15:28:13 GMT
+content-type: application/json
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=B9ExvFYmrOPHpL6WSIygb2BqqR0rzj4DpMrfM9F%2Fv0sLPN7L0W2NEiWEH9uadVB0RY%2Fi7n%2FDUfSxgZ1guC63QwIb7bv%2B8%2BS2iJPmkBFcdTBLCX9dJ%2BMldCGX09IUxJQG"}]}
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+content-encoding: zstd
+server: cloudflare
+cf-ray: a088ecd10ea0d2d3-FRA
+alt-svc: h3=":443"; ma=86400
+X-Firefox-Spdy: h2
+
+
+
+{"totalRequests":28,"totalTokens":67352,"avgLatency":38220,"todayCacheReadTokens":3070395,"todayCacheWriteTokens":176331,"window5h":{"usedCents":442,"limitCents":1000,"resetsAt":1780949041},"windowWeek":{"usedCents":442,"limitCents":6667,"resetsAt":1781535841}}
+
+
+
+
+
+
+
+

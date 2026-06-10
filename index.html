@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FreeModel — менеджер токенов</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #181b22;
+    --panel2: #1f232c;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #8b93a1;
+    --accent: #5b8cff;
+    --green: #3fb950;
+    --yellow: #d4a72c;
+    --red: #f85149;
+    --purple: #a371f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif; font-size: 14px;
+  }
+  header {
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .wrap { padding: 24px; max-width: 1280px; margin: 0 auto; }
+
+  .add-form {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 24px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end;
+  }
+  .add-form .full { grid-column: 1 / -1; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  input, textarea {
+    width: 100%; background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 8px 10px; font-size: 13px;
+    font-family: inherit; resize: vertical;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 9px 16px; font-size: 13px; cursor: pointer; font-weight: 500;
+  }
+  button:hover { filter: brightness(1.1); }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  button.danger { background: transparent; border: 1px solid var(--border); color: var(--red); }
+  button.small { padding: 5px 10px; font-size: 12px; }
+
+  /* cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .card.err { border-color: rgba(248,81,73,.4); }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .email { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pw { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row.between { justify-content: space-between; }
+  .label-sm { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+  .key-text {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+    max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted);
+  }
+
+  .bar { background: var(--panel2); border-radius: 5px; height: 8px; overflow: hidden; margin-top: 5px; }
+  .bar > span { display: block; height: 100%; border-radius: 5px; }
+  .limit-label { font-size: 12px; display: flex; justify-content: space-between; gap: 8px; }
+  .limit-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .limits { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+  .pill.ok { background: rgba(63,185,80,.15); color: var(--green); }
+  .pill.err { background: rgba(248,81,73,.15); color: var(--red); }
+  .pill.wait { background: rgba(139,147,161,.15); color: var(--muted); }
+  .pill.verified { background: rgba(63,185,80,.15); color: var(--green); }
+  .pill.unverified { background: rgba(212,167,44,.15); color: var(--yellow); }
+  .pill.plan { background: rgba(163,113,247,.18); color: var(--purple); }
+  .pill.abuser { background: rgba(248,81,73,.18); color: var(--red); }
+
+  .ref-box { background: var(--panel2); border-radius: 8px; padding: 10px 12px; }
+  .ref-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .ref-item { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .linked { color: var(--green); font-weight: 600; }
+  .ref-credited { color: var(--green); }
+  .ref-pending { color: var(--yellow); }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--green); color: #fff; padding: 10px 18px; border-radius: 8px;
+    font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10;
+  }
+  .toast.show { opacity: 1; }
+  .empty { color: var(--muted); text-align: center; padding: 40px; }
+  .err-text { color: var(--red); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>FreeModel — менеджер токенов</h1>
+    <div class="sub">Вставь cookie — остальное (почта, план, рефералы) подтянется само. Обновление раз в минуту, по очереди.</div>
+  </div>
+  <button class="ghost" id="refreshAll">Обновить сейчас</button>
+</header>
+
+<div class="wrap">
+  <div class="add-form" id="addForm">
+    <div class="field"><label>Почта (необязательно — подтянется сама)</label><input id="f-email" placeholder="подтянется из аккаунта" /></div>
+    <div class="field"><label>Пароль (для тебя)</label><input id="f-password" placeholder="пароль аккаунта" /></div>
+    <div class="field"><label>API ключ</label><input id="f-apiKey" placeholder="fe_oa_... / sk-..." /></div>
+    <div class="field full">
+      <label>Cookie — вставляй в любом формате (cURL / PowerShell / заголовок / просто значение)</label>
+      <textarea id="f-cookie" rows="3" placeholder="Сюда можно вставить целиком Copy as cURL, PowerShell-команду, строку Cookie: ... или просто bm_session=..."></textarea>
+    </div>
+    <div class="field"><label>Заметка</label><input id="f-note" placeholder="необязательно" /></div>
+    <div></div>
+    <div style="text-align:right;align-self:end">
+      <button id="addBtn">Добавить аккаунт</button>
+    </div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+  <div class="empty" id="empty" style="display:none">Нет аккаунтов. Вставь cookie сверху — панель сама достанет почту и данные.</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let serverSkew = 0;
+
+function fmtUsd(cents) { return '$' + (cents / 100).toFixed(2); }
+
+function fmtCountdown(resetsAtSec) {
+  const nowSec = (Date.now() + serverSkew) / 1000;
+  let s = Math.max(0, Math.floor(resetsAtSec - nowSec));
+  const d = Math.floor(s / 86400); s -= d * 86400;
+  const h = Math.floor(s / 3600); s -= h * 3600;
+  const m = Math.floor(s / 60); s -= m * 60;
+  if (d > 0) return `${d}д ${h}ч`;
+  if (h > 0) return `${h}ч ${m}м`;
+  if (m > 0) return `${m}м ${s}с`;
+  return `${s}с`;
+}
+
+function barColor(pct) {
+  if (pct >= 90) return 'var(--red)';
+  if (pct >= 70) return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+function limitCell(win, title) {
+  const used = win.usedCents, limit = win.limitCents;
+  const remaining = Math.max(0, limit - used);
+  const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+  return `
+    <div>
+      <div class="label-sm">${title}</div>
+      <div class="limit-label">
+        <span>осталось <b>${fmtUsd(remaining)}</b></span>
+        <span style="color:var(--muted)">из ${fmtUsd(limit)}</span>
+      </div>
+      <div class="bar"><span style="width:${pct}%;background:${barColor(pct)}"></span></div>
+      <div class="limit-sub">сброс через <b>${fmtCountdown(win.resetsAt)}</b></div>
+    </div>`;
+}
+
+function statusPill(acc) {
+  if (acc.error) return `<span class="pill err" title="${esc(acc.error)}">ошибка</span>`;
+  if (!acc.usage) return `<span class="pill wait">ожидание</span>`;
+  const ago = acc.lastUpdated ? Math.floor((Date.now() + serverSkew - acc.lastUpdated) / 1000) : null;
+  const agoTxt = ago === null ? '' : ago < 90 ? `${ago}с` : `${Math.floor(ago/60)}м`;
+  return `<span class="pill ok">ok</span> <span style="color:var(--muted);font-size:11px">${agoTxt} назад</span>`;
+}
+
+function planPill(acc) {
+  if (!acc.billing) return '';
+  const b = acc.billing;
+  const planName = (b.plan || 'free').toUpperCase();
+  let txt = planName;
+  if (b.status && b.status !== 'active') txt += ` (${b.status})`;
+  let title = '';
+  if (b.currentPeriodEnd) title = `активна до ${b.currentPeriodEnd}` + (b.cancelAtPeriodEnd ? ', не продлевается' : '');
+  return `<span class="pill plan" title="${esc(title)}">${esc(txt)}</span>`;
+}
+
+function verifyPill(acc) {
+  if (!acc.profile) return '';
+  let out = acc.profile.verified
+    ? `<span class="pill verified" title="${esc(acc.profile.verifiedAt||'')}">✓ verified</span>`
+    : `<span class="pill unverified">не verified</span>`;
+  if (acc.profile.isAbuser) out += ` <span class="pill abuser">abuser</span>`;
+  return out;
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+
+function maskKey(k) {
+  if (!k) return '<span style="color:var(--muted)">— нет ключа —</span>';
+  const shown = k.length > 16 ? k.slice(0, 8) + '…' + k.slice(-4) : k;
+  return `<span class="key-text" title="${esc(k)}">${esc(shown)}</span>`;
+}
+
+function refBox(acc) {
+  if (!acc.referral && !acc.referralCode) return '';
+  const r = acc.referral || {};
+  const code = acc.referralCode || r.code || '';
+  const invite = code ? `https://freemodel.dev/invite/${code}` : '';
+  const recent = Array.isArray(r.recent) ? r.recent : [];
+  const linkedCount = recent.filter((x) => x.linkedId).length;
+
+  const list = recent.map((x) => {
+    const credited = x.credited
+      ? `<span class="ref-credited">+${fmtUsd(x.creditCents)}</span>`
+      : `<span class="ref-pending">ожидает</span>`;
+    const mine = x.linkedId
+      ? ` <span class="linked" title="есть в панели: ${esc(x.linkedEmail)}">● мой (${esc(x.linkedEmail)})</span>`
+      : '';
+    return `<div class="ref-item"><span class="mono" style="color:var(--muted)">${esc(x.emailMasked)}</span> ${credited}${mine}</div>`;
+  }).join('');
+
+  return `
+    <div class="ref-box">
+      <div class="row between">
+        <div class="label-sm">Рефералы: <b style="color:var(--text)">${r.count != null ? r.count : recent.length}</b>${linkedCount ? ` <span class="linked">(${linkedCount} в панели)</span>` : ''}</div>
+        ${invite ? `<button class="ghost small" onclick="copyText('${esc(invite)}','Реф-ссылка скопирована')">копировать инвайт</button>` : ''}
+      </div>
+      ${list ? `<div class="ref-list">${list}</div>` : ''}
+    </div>`;
+}
+
+async function load() {
+  const r = await fetch('/api/accounts');
+  const data = await r.json();
+  serverSkew = data.serverTime - Date.now();
+  render(data.accounts);
+}
+
+function render(accounts) {
+  const cards = document.getElementById('cards');
+  const empty = document.getElementById('empty');
+  empty.style.display = accounts.length ? 'none' : 'block';
+  window.__accounts = accounts;
+
+  cards.innerHTML = accounts.map((acc) => `
+    <div class="card ${acc.error ? 'err' : ''}">
+      <div class="card-head">
+        <div>
+          <div class="email">
+            ${esc(acc.email) || '<span style="color:var(--muted)">— почта подтянется —</span>'}
+            ${verifyPill(acc)} ${planPill(acc)}
+          </div>
+          ${acc.password ? `<div class="pw">пароль: ${esc(acc.password)}</div>` : ''}
+        </div>
+        <div class="card-actions">
+          <button class="ghost small" onclick="editCookie('${acc.id}')">cookie</button>
+          <button class="danger small" onclick="del('${acc.id}')">×</button>
+        </div>
+      </div>
+
+      <div class="row between">
+        <div class="row">
+          <span class="label-sm">API</span>
+          ${maskKey(acc.apiKey)}
+        </div>
+        <div class="row">
+          ${acc.apiKey ? `<button class="ghost small" onclick="copyText(window.__accounts.find(a=>a.id==='${acc.id}').apiKey,'API ключ скопирован')">копировать ключ</button>` : ''}
+          ${statusPill(acc)}
+        </div>
+      </div>
+
+      ${acc.error ? `<div class="err-text">${esc(acc.error)}</div>` : ''}
+
+      ${acc.usage ? `<div class="limits">
+        ${limitCell(acc.usage.window5h, 'Лимит 5 часов')}
+        ${limitCell(acc.usage.windowWeek, 'Лимит 7 дней')}
+      </div>` : '<div style="color:var(--muted)">нет данных о лимитах</div>'}
+
+      ${refBox(acc)}
+    </div>
+  `).join('');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+function copyText(text, msg) {
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => toast(msg || 'Скопировано'));
+}
+
+async function del(id) {
+  if (!confirm('Удалить аккаунт?')) return;
+  await fetch('/api/accounts/' + id, { method: 'DELETE' });
+  load();
+}
+
+async function editCookie(id) {
+  const acc = window.__accounts.find((a) => a.id === id);
+  const cur = acc ? acc.cookie : '';
+  const next = prompt('Новый cookie (любой формат):', cur || '');
+  if (next === null) return;
+  await fetch('/api/accounts/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cookie: next }),
+  });
+  toast('Cookie обновлён');
+  load();
+}
+
+document.getElementById('addBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('addBtn');
+  const body = {
+    email: document.getElementById('f-email').value,
+    password: document.getElementById('f-password').value,
+    apiKey: document.getElementById('f-apiKey').value,
+    note: document.getElementById('f-note').value,
+    cookie: document.getElementById('f-cookie').value,
+  };
+  if (!body.cookie.trim()) { alert('Без cookie лимиты не получить. Вставь cookie.'); return; }
+  btn.disabled = true; btn.textContent = 'Проверяю cookie…';
+  try {
+    const r = await fetch('/api/accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      ['f-email','f-password','f-apiKey','f-note','f-cookie'].forEach((id) => document.getElementById(id).value = '');
+      const acc = data.account;
+      toast(acc && acc.error ? 'Добавлен, но cookie не сработал' : `Добавлен: ${acc && acc.email ? acc.email : 'ok'}`);
+      load();
+    } else {
+      alert('Ошибка: ' + (data.error || 'неизвестно'));
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = 'Добавить аккаунт';
+  }
+});
+
+document.getElementById('refreshAll').addEventListener('click', async () => {
+  toast('Обновляю…');
+  const accs = window.__accounts || [];
+  for (const a of accs) {
+    await fetch('/api/refresh/' + a.id, { method: 'POST' });
+    load();
+  }
+  toast('Готово');
+});
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>

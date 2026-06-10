@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>FreeModel Swapper</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<script>
+  (function () {
+    try {
+      var th = localStorage.getItem('fms-theme');
+      if (!th) th = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', th);
+      var l = localStorage.getItem('fms-lang') === 'ru' ? 'ru' : 'en';
+      document.documentElement.lang = l;
+    } catch (e) {}
+  })();
+</script>
+<style>
+  html[data-theme="light"] { background: #faf9f5; }
+  html[data-theme="dark"]  { background: #17150f; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" data-ic="logo"></div>
+    <div class="title-block">
+      <h1>FreeModel Swapper</h1>
+      <p data-i18n="subtitle">Claude API key balancer · auto-rotation on rate limits</p>
+    </div>
+    <div class="header-right">
+      <div class="header-status">
+        <span class="live-dot"></span>
+        <span data-i18n="proxy_live">Proxy live</span>
+        <span class="sep">·</span>
+        <span class="muted" id="hdr-port">localhost</span>
+        <span class="model-badge" id="hdr-model" style="display:none"><span data-ic="cpu"></span><span id="hdr-model-text"></span></span>
+      </div>
+      <div class="theme-toggle" onclick="toggleTheme()" role="button" aria-label="Toggle theme">
+        <span class="sun" data-ic="sun"></span>
+        <span class="moon" data-ic="moon"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat green"><span class="spark" data-ic="zap"></span><div class="label" data-i18n="st_active">Active keys</div><div class="val" id="s-active">—</div></div>
+    <div class="stat"><span class="spark" data-ic="clock"></span><div class="label" data-i18n="st_expired">Expired</div><div class="val" id="s-exp">—</div></div>
+    <div class="stat accent"><span class="spark" data-ic="repeat"></span><div class="label" data-i18n="st_requests">Requests</div><div class="val" id="s-reqs">—</div></div>
+    <div class="stat"><span class="spark" data-ic="timer"></span><div class="label" data-i18n="st_uptime">Uptime</div><div class="val" id="s-up">—</div></div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <h2 data-i18n="api_keys">API Keys</h2>
+          <span class="count" id="key-count">0</span>
+        </div>
+        <div class="card-body">
+          <div class="cscroll" id="keys-scroll">
+            <div class="cscroll-view" id="keys-view"><div class="keys" id="keys"></div></div>
+            <div class="cscroll-bar" id="keys-bar"><div class="cscroll-thumb" id="keys-thumb"></div></div>
+          </div>
+          <div class="divider"></div>
+          <div class="add">
+            <div class="field">
+              <input class="inp" id="new-key" data-i18n-ph="ph_key" placeholder="Paste API key (fe_oa_…)" autocomplete="off" spellcheck="false" />
+            </div>
+            <button class="btn btn-primary" onclick="addKey()"><span data-ic="plus"></span> <span data-i18n="add_key">Add key</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-head">
+          <h2 data-i18n="live_activity">Live Activity</h2>
+          <span class="count" id="log-count">0</span>
+          <div class="log-head-actions">
+            <button class="icon-btn" onclick="clearLog()"><span data-ic="trash"></span></button>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:8px;padding-bottom:10px;">
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+
+      <div class="card run-card">
+        <div class="card-head"><h2 data-i18n="launch_claude">Launch Claude</h2></div>
+        <div class="card-body">
+          <div class="warn-banner" id="claude-warn" style="display:none">
+            <span class="warn-ic" data-ic="alert"></span>
+            <span data-i18n="claude_missing">Claude CLI not found on PATH. Install it to launch sessions.</span>
+          </div>
+          <label class="label" data-i18n="run_key">API key</label>
+          <select class="inp" id="run-key"></select>
+          <label class="label" data-i18n="work_dir">Working directory</label>
+          <input class="inp" id="work-dir" list="dir-history" placeholder="C:\Users\you\my-project" autocomplete="off" spellcheck="false" style="font-family:'Inter';" />
+          <datalist id="dir-history"></datalist>
+          <div class="run-row">
+            <button class="btn btn-primary btn-lg" onclick="runClaude()"><span data-ic="play"></span> <span data-i18n="launch_claude">Launch Claude</span></button>
+            <span id="run-msg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="analytics">
+    <div class="section-title"><span class="ico" data-ic="chart"></span> <span data-i18n="analytics">Analytics</span></div>
+
+    <div class="metrics">
+      <div class="metric good">
+        <div class="m-label" data-i18n="success_rate">Success rate</div>
+        <div class="m-val"><span id="m-success">—</span><small>%</small></div>
+      </div>
+      <div class="metric">
+        <div class="m-label" data-i18n="avg_latency">Avg latency</div>
+        <div class="m-val"><span id="m-latency">—</span><small> ms</small></div>
+      </div>
+      <div class="metric">
+        <div class="m-label" data-i18n="total_responses">Total responses</div>
+        <div class="m-val" id="m-total">—</div>
+      </div>
+    </div>
+
+    <div class="charts">
+      <div class="card">
+        <div class="card-head"><h2 data-i18n="req_over_time">Requests over time</h2><span class="count" data-i18n="last60">last 60 min</span></div>
+        <div class="card-body">
+          <svg class="chart-area" id="chart-series" viewBox="0 0 600 180" preserveAspectRatio="none"></svg>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2 data-i18n="resp_statuses">Response statuses</h2></div>
+        <div class="card-body">
+          <div class="donut-wrap">
+            <svg class="donut" id="chart-donut" viewBox="0 0 42 42"></svg>
+            <div class="legend" id="donut-legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:22px;">
+      <div class="card-head"><h2 data-i18n="load_per_key">Load per key</h2></div>
+      <div class="card-body">
+        <div class="loadbars" id="loadbars"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span data-i18n="footer_pre">Created with</span>
+    <span class="heart" data-ic="heart"></span>
+    <span data-i18n="footer_post">by</span>
+    <a href="https://t.me/Kryv1x" target="_blank" rel="noopener">@Kryv1x</a>
+  </footer>
+</div>
+
+<div class="dock">
+  <button class="dock-btn primary" id="dock-test" onclick="testKeys()" aria-label="Test all keys">
+    <span class="tip" data-i18n="tip_test">Test all keys</span>
+    <span class="dock-ic" data-ic="flask"></span>
+    <span class="dock-spin" data-ic="repeat"></span>
+  </button>
+  <a class="dock-btn" href="https://temp-mail.org/" target="_blank" rel="noopener" aria-label="Temp Mail">
+    <span class="tip" data-i18n="tip_mail">Temp Mail</span><span data-ic="mail"></span>
+  </a>
+  <a class="dock-btn" href="https://freemodel.dev/" target="_blank" rel="noopener" aria-label="FreeModel">
+    <span class="tip" data-i18n="tip_freemodel">FreeModel</span><span data-ic="link"></span>
+  </a>
+  <button class="dock-btn lang-btn" onclick="toggleLang()" aria-label="Language">
+    <span class="tip" data-i18n="tip_lang">Language</span>
+    <span data-ic="globe"></span>
+    <span class="lang-code" id="lang-label">EN</span>
+  </button>
+  <button class="dock-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Scroll to top">
+    <span class="tip" data-i18n="tip_top">Scroll to top</span><span data-ic="arrowUp"></span>
+  </button>
+</div>
+
+<div id="toast"></div>
+
+<script src="/static/js/icons.js"></script>
+<script src="/static/js/charts.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

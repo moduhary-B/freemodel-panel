@@ -1,0 +1,20 @@
+# Secrets & local state — never commit
+keys.txt
+cooldowns.json
+fms.db
+fms.db-*
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

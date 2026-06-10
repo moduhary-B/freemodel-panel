@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#D97757"/>
+  <!-- Claude sunburst mark: radial spokes from a center, in cream on coral -->
+  <g fill="#FAF9F5">
+    <path d="M32 11 L34.6 26.4 L31.4 26.4 Z M32 53 L29.4 37.6 L32.6 37.6 Z"/>
+    <path d="M11 32 L26.4 29.4 L26.4 32.6 Z M53 32 L37.6 34.6 L37.6 31.4 Z"/>
+    <path d="M17.1 17.1 L29.0 27.0 L26.7 29.3 Z M46.9 46.9 L35.0 37.0 L37.3 34.7 Z"/>
+    <path d="M46.9 17.1 L37.0 29.0 L34.7 26.7 Z M17.1 46.9 L27.0 35.0 L29.3 37.3 Z"/>
+    <path d="M23.0 13.4 L30.2 25.9 L27.6 27.3 Z M41.0 50.6 L33.8 38.1 L36.4 36.7 Z"/>
+    <path d="M50.6 23.0 L38.1 30.2 L36.7 27.6 Z M13.4 41.0 L25.9 33.8 L27.3 36.4 Z"/>
+    <path d="M41.0 13.4 L33.8 25.9 L36.4 27.3 Z M23.0 50.6 L30.2 38.1 L27.6 36.7 Z"/>
+    <path d="M50.6 41.0 L38.1 33.8 L36.7 36.4 Z M13.4 23.0 L25.9 30.2 L27.3 27.6 Z"/>
+  </g>
+  <circle cx="32" cy="32" r="5.2" fill="#FAF9F5"/>
+</svg>
