@@ -5,8 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const PORT = 3000;
-const DATA_FILE = path.join(__dirname, 'accounts.json');
+const PORT = Number(process.env.PORT) || 3000;
+// Хранилище аккаунтов. В контейнере DATA_FILE указывает в именованный том
+// (/app/data/accounts.json), чтобы данные переживали пересборку и миграцию.
+const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'accounts.json');
 const BASE = 'https://freemodel.dev';
 const POLL_INTERVAL_MS = 60 * 1000;       // one full cycle per minute (while the panel is open)
 const GAP_BETWEEN_ACCOUNTS_MS = 3000;     // delay between accounts so we don't hammer the IP

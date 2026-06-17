@@ -1,0 +1,5 @@
+# Манифест проекта для тулинга (scripts/projects.sh).
+name: freemodel-panel
+enabled: true
+kind: worker            # service | worker | bot
+capture: image          # image (рекоменд.) | commit

@@ -1,0 +1,31 @@
+# projects/freemodel-panel/compose.yml — бэкенд панели FreeModel.
+# Node-сервис. Сидит на сети `edge` (а НЕ internal), потому что:
+#   1. ему нужен исходящий интернет к freemodel.dev — у internal-сети нет шлюза
+#      наружу (internal: true), а у edge он есть;
+#   2. сайт (тоже на edge) ходит к нему по имени: http://freemodel-panel:3000/api/*.
+# Наружу при этом НЕ торчит: traefik-меток нет, роутер не создаётся.
+# Данные аккаунтов — в именованном томе (accounts.json), переживают миграцию.
+networks:
+  edge:
+    external: true
+
+volumes:
+  freemodel-panel_data:
+    name: freemodel-panel_data
+
+services:
+  freemodel-panel:
+    build: .
+    image: ${REGISTRY_HOST:-localhost:5000}/freemodel-panel:latest
+    container_name: freemodel-panel
+    restart: unless-stopped
+    networks: [edge]
+    environment:
+      - TZ=${TZ}
+      - DATA_FILE=/app/data/accounts.json
+    volumes:
+      - freemodel-panel_data:/app/data
+    labels:
+      - "infra.managed=true"
+      - "infra.project=freemodel-panel"
+      - "infra.kind=worker"

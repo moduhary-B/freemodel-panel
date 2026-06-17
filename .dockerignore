@@ -1,0 +1,7 @@
+node_modules/
+accounts.json
+.git/
+.claude/
+freeClaude2api-master/
+quest.txt
+README.md
