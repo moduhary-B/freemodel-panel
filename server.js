@@ -10,6 +10,8 @@ const PORT = Number(process.env.PORT) || 3000;
 // (/app/data/accounts.json), чтобы данные переживали пересборку и миграцию.
 const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'accounts.json');
 const BASE = 'https://freemodel.dev';
+const USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0';
 const POLL_INTERVAL_MS = 60 * 1000;       // one full cycle per minute (while the panel is open)
 const GAP_BETWEEN_ACCOUNTS_MS = 3000;     // delay between accounts so we don't hammer the IP
 const GAP_BETWEEN_CALLS_MS = 400;         // small pause between the per-account endpoint calls
@@ -90,8 +92,7 @@ function renormalizeStored() {
 // tolerate an empty response. Used by apiGet plus the key-rotation helpers.
 async function apiCall(method, pathName, cookie, body) {
   const headers = {
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0',
+    'User-Agent': USER_AGENT,
     'Accept': '*/*',
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
     'Referer': 'https://freemodel.dev/dashboard/keys',
@@ -232,6 +233,86 @@ async function rotateApiKey(id, name) {
   saveAccounts(accounts);
   console.log(`[rotate] ${acc.email || acc.id}: new key ...${secret.slice(-4)} (#${newId})${oldId ? `, removed old #${oldId}` : ''}`);
   return acc;
+}
+
+// ---------- session re-login via email OTP ----------
+// freemodel logs in only via email one-time code or Google. When a stored
+// bm_session dies (401), we mint a fresh one with the OTP flow: send a code to
+// the account email, then exchange it for a new session cookie. This is
+// independent of however the user logs in elsewhere (Google on their own PC),
+// so the panel's session is no longer collateral damage.
+
+async function freemodelSendOtp(email) {
+  const res = await fetch(BASE + '/api/auth/send-otp', {
+    method: 'POST',
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept': '*/*',
+      'Content-Type': 'application/json',
+      'Referer': BASE + '/',
+    },
+    body: JSON.stringify({ email }),
+  });
+  const text = await res.text().catch(() => '');
+  if (!res.ok) throw new Error(`send-otp HTTP ${res.status}${text ? ' — ' + text.slice(0, 120) : ''}`);
+  return text ? JSON.parse(text) : {};
+}
+
+// Exchange an OTP code for a session. Returns the new cookie string built from
+// the Set-Cookie headers (we keep bm_session and anything else freemodel sets).
+async function freemodelVerifyOtp(email, code) {
+  const res = await fetch(BASE + '/api/auth/verify-otp', {
+    method: 'POST',
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept': '*/*',
+      'Content-Type': 'application/json',
+      'Referer': BASE + '/',
+    },
+    body: JSON.stringify({ email, code }),
+  });
+  const text = await res.text().catch(() => '');
+  if (!res.ok) {
+    let msg = `verify-otp HTTP ${res.status}`;
+    try { const j = JSON.parse(text); if (j.error) msg = j.error; } catch {}
+    throw new Error(msg);
+  }
+  const setCookies = typeof res.headers.getSetCookie === 'function'
+    ? res.headers.getSetCookie()
+    : (res.headers.get('set-cookie') ? [res.headers.get('set-cookie')] : []);
+  const pairs = [];
+  for (const sc of setCookies) {
+    const m = sc.match(/^\s*([^=;\s]+)=([^;]*)/);
+    if (m) pairs.push(`${m[1]}=${m[2]}`);
+  }
+  return { cookie: pairs.join('; ') };
+}
+
+// Step 1: ask freemodel to email a login code to the account address.
+async function reloginSendOtp(id) {
+  const acc = accounts.find((a) => a.id === id);
+  if (!acc) throw new Error('Not found');
+  if (!acc.email) throw new Error('No email on account — add it first');
+  await freemodelSendOtp(acc.email);
+  console.log(`[relogin] ${acc.email}: OTP sent`);
+  return acc.email;
+}
+
+// Step 2: exchange the code the user typed for a fresh session, store it, and
+// validate by pulling a snapshot.
+async function reloginVerifyOtp(id, code) {
+  const acc = accounts.find((a) => a.id === id);
+  if (!acc) throw new Error('Not found');
+  if (!acc.email) throw new Error('No email on account');
+  const { cookie } = await freemodelVerifyOtp(acc.email, String(code).trim());
+  if (!/(^|;\s*)bm_session=/.test(cookie)) {
+    throw new Error('Logged in but no session cookie returned');
+  }
+  acc.cookie = normalizeCookie(cookie);
+  saveAccounts(accounts);
+  console.log(`[relogin] ${acc.email}: new session stored`);
+  await refreshOne(id);
+  return accounts.find((a) => a.id === id);
 }
 
 // Poll each account one at a time, with a gap between them.
@@ -425,6 +506,32 @@ const server = http.createServer(async (req, res) => {
       const id = pathname.split('/').pop();
       const b = await readBody(req).catch(() => ({}));
       const acc = await rotateApiKey(id, b && b.name);
+      sendJson(res, 200, { ok: true, account: acc });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return;
+  }
+
+  // --- relogin step 1: send OTP code to the account email ---
+  if (req.method === 'POST' && pathname.startsWith('/api/otp/send/')) {
+    try {
+      const id = pathname.split('/').pop();
+      const email = await reloginSendOtp(id);
+      sendJson(res, 200, { ok: true, email });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
+    return;
+  }
+
+  // --- relogin step 2: verify OTP code, store the fresh session ---
+  if (req.method === 'POST' && pathname.startsWith('/api/otp/verify/')) {
+    try {
+      const id = pathname.split('/').pop();
+      const b = await readBody(req);
+      if (!b || !b.code) throw new Error('No code');
+      const acc = await reloginVerifyOtp(id, b.code);
       sendJson(res, 200, { ok: true, account: acc });
     } catch (err) {
       sendJson(res, 400, { error: err.message });

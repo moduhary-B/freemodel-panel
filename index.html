@@ -266,6 +266,7 @@ function render(accounts) {
           ${acc.password ? `<div class="pw">пароль: ${esc(acc.password)}</div>` : ''}
         </div>
         <div class="card-actions">
+          <button class="ghost small" onclick="relogin('${acc.id}')" title="Переподключить: код придёт на почту аккаунта">переподключить</button>
           <button class="ghost small" onclick="editCookie('${acc.id}')">cookie</button>
           <button class="danger small" onclick="del('${acc.id}')">×</button>
         </div>
@@ -304,6 +305,29 @@ function toast(msg) {
 function copyText(text, msg) {
   if (!text) return;
   navigator.clipboard.writeText(text).then(() => toast(msg || 'Скопировано'));
+}
+
+async function relogin(id) {
+  const acc = window.__accounts.find((a) => a.id === id);
+  if (!acc || !acc.email) { alert('У аккаунта нет почты — сначала добавь её.'); return; }
+  toast('Отправляю код на ' + acc.email + '…');
+  try {
+    const r = await fetch('/api/otp/send/' + id, { method: 'POST' });
+    if (!r.ok) { const d = await r.json(); throw new Error(d.error || 'не удалось отправить код'); }
+  } catch (e) { alert('Ошибка отправки кода: ' + e.message); return; }
+  const code = prompt('Код из письма (' + acc.email + '):', '');
+  if (!code) return;
+  try {
+    const r = await fetch('/api/otp/verify/' + id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code.trim() }),
+    });
+    const d = await r.json();
+    if (r.ok) toast(d.account && !d.account.error ? 'Переподключено: ' + acc.email : 'Код принят, но cookie не сработал');
+    else alert('Ошибка входа: ' + (d.error || 'неизвестно'));
+  } catch (e) { alert('Ошибка входа: ' + e.message); }
+  load();
 }
 
 async function rotateKey(id) {
