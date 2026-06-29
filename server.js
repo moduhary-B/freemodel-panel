@@ -85,26 +85,37 @@ function renormalizeStored() {
 
 // ---------- freemodel API ----------
 
-async function apiGet(pathName, cookie) {
-  const res = await fetch(BASE + pathName, {
-    method: 'GET',
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0',
-      'Accept': '*/*',
-      'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-      'Referer': 'https://freemodel.dev/dashboard/usage',
-      'Sec-Fetch-Dest': 'empty',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Site': 'same-origin',
-      'Cookie': cookie,
-    },
-  });
+// Generic authenticated call to the freemodel API. `body` (when provided) is
+// sent as JSON; GET/DELETE pass no body. DELETE returns "{ok:true}" but we also
+// tolerate an empty response. Used by apiGet plus the key-rotation helpers.
+async function apiCall(method, pathName, cookie, body) {
+  const headers = {
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0',
+    'Accept': '*/*',
+    'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Referer': 'https://freemodel.dev/dashboard/keys',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'Cookie': cookie,
+  };
+  const init = { method, headers };
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(BASE + pathName, init);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ' — ' + text.slice(0, 120) : ''}`);
   }
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
+}
+
+function apiGet(pathName, cookie) {
+  return apiCall('GET', pathName, cookie);
 }
 
 // Fetch everything we care about for one account. Returns a flat snapshot.
@@ -173,6 +184,54 @@ function applySnapshot(acc, snap) {
     if (!acc.email && snap.profile.email) acc.email = snap.profile.email;
     if (snap.profile.referralCode) acc.referralCode = snap.profile.referralCode;
   }
+}
+
+// ---------- api key rotation ----------
+// Rotate an account's freemodel API key: create a fresh key, store its secret,
+// then delete the old one. We create-then-delete so there's never a window with
+// no key. The old key's id comes from acc.apiKeyId; for keys added before we
+// tracked ids, we fall back to matching the stored key's suffix (last 4 chars)
+// against GET /api/keys. Returns the new secret.
+async function rotateApiKey(id, name) {
+  const acc = accounts.find((a) => a.id === id);
+  if (!acc) throw new Error('Not found');
+  if (!acc.cookie) throw new Error('No cookie set');
+
+  // Figure out which existing key to drop afterwards.
+  let oldId = acc.apiKeyId || null;
+  if (!oldId && acc.apiKey) {
+    const suffix = acc.apiKey.trim().slice(-4);
+    try {
+      const list = await apiGet('/api/keys', acc.cookie);
+      const match = (list.keys || []).find((k) => k.suffix === suffix);
+      if (match) oldId = match.id;
+    } catch (e) {
+      console.error(`[rotate] ${acc.email || acc.id}: list failed — ${e.message}`);
+    }
+  }
+
+  // Create the new key. freemodel returns the full secret exactly once here.
+  const keyName = (name && String(name).trim()) || 'panel';
+  const created = await apiCall('POST', '/api/keys', acc.cookie, { name: keyName });
+  const secret = created.secret;
+  const newId = created.key && created.key.id;
+  if (!secret) throw new Error('No secret returned: ' + JSON.stringify(created).slice(0, 120));
+
+  // Delete the previous key (never the one we just made).
+  if (oldId && oldId !== newId) {
+    try {
+      await apiCall('DELETE', `/api/keys/${oldId}`, acc.cookie);
+    } catch (e) {
+      console.error(`[rotate] ${acc.email || acc.id}: delete old #${oldId} failed — ${e.message}`);
+    }
+  }
+
+  acc.apiKey = secret;
+  acc.apiKeyId = newId || null;
+  acc.lastUpdated = Date.now();
+  saveAccounts(accounts);
+  console.log(`[rotate] ${acc.email || acc.id}: new key ...${secret.slice(-4)} (#${newId})${oldId ? `, removed old #${oldId}` : ''}`);
+  return acc;
 }
 
 // Poll each account one at a time, with a gap between them.
@@ -308,6 +367,7 @@ const server = http.createServer(async (req, res) => {
         email: (b.email || '').trim(),
         password: (b.password || '').trim(),
         apiKey: (b.apiKey || '').trim(),
+        apiKeyId: null,
         note: (b.note || '').trim(),
         cookie: normalizeCookie(b.cookie),
         referralCode: '',
@@ -356,6 +416,19 @@ const server = http.createServer(async (req, res) => {
     accounts = accounts.filter((a) => a.id !== id);
     saveAccounts(accounts);
     sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  // --- rotate api key: make a new freemodel key, drop the old one ---
+  if (req.method === 'POST' && pathname.startsWith('/api/rotate-key/')) {
+    try {
+      const id = pathname.split('/').pop();
+      const b = await readBody(req).catch(() => ({}));
+      const acc = await rotateApiKey(id, b && b.name);
+      sendJson(res, 200, { ok: true, account: acc });
+    } catch (err) {
+      sendJson(res, 400, { error: err.message });
+    }
     return;
   }
 

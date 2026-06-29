@@ -278,6 +278,7 @@ function render(accounts) {
         </div>
         <div class="row">
           ${acc.apiKey ? `<button class="ghost small" onclick="copyText(window.__accounts.find(a=>a.id==='${acc.id}').apiKey,'API ключ скопирован')">копировать ключ</button>` : ''}
+          <button class="ghost small" onclick="rotateKey('${acc.id}')" title="Создать новый ключ на freemodel и удалить старый">обновить ключ</button>
           ${statusPill(acc)}
         </div>
       </div>
@@ -303,6 +304,29 @@ function toast(msg) {
 function copyText(text, msg) {
   if (!text) return;
   navigator.clipboard.writeText(text).then(() => toast(msg || 'Скопировано'));
+}
+
+async function rotateKey(id) {
+  const acc = window.__accounts.find((a) => a.id === id);
+  const tail = acc && acc.apiKey ? ' (…' + acc.apiKey.slice(-4) + ')' : '';
+  if (!confirm('Создать новый API-ключ на freemodel и удалить старый' + tail + '?')) return;
+  toast('Обновляю ключ…');
+  try {
+    const r = await fetch('/api/rotate-key/' + id, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      toast('Новый ключ: …' + (data.account.apiKey || '').slice(-4));
+    } else {
+      alert('Ошибка ротации: ' + (data.error || 'неизвестно'));
+    }
+  } catch (e) {
+    alert('Ошибка ротации: ' + e.message);
+  }
+  load();
 }
 
 async function del(id) {
